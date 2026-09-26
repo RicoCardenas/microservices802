@@ -1,0 +1,28 @@
+flowchart LR
+  planner["planner<br/>planner<br/>complete"]
+  plan_review["plan_review<br/>plan-review<br/>complete"]
+  usecase_validation["usecase_validation<br/>implementation<br/>complete"]
+  persistence_adapter["persistence_adapter<br/>implementation<br/>complete"]
+  controller_endpoints["controller_endpoints<br/>implementation<br/>complete"]
+  usecase_tests["usecase_tests<br/>validation<br/>complete"]
+  quality["quality<br/>quality<br/>passed"]
+  reviewer["reviewer<br/>review<br/>complete"]
+  synthesis["synthesis<br/>synthesis<br/>complete"]
+  persistence_hardening["persistence_hardening<br/>implementation<br/>complete"]
+  response_hardening["response_hardening<br/>implementation<br/>complete"]
+  hardened_quality["hardened_quality<br/>quality<br/>passed"]
+  planner --> plan_review
+  plan_review --> usecase_validation
+  plan_review --> persistence_adapter
+  plan_review --> controller_endpoints
+  usecase_validation --> usecase_tests
+  usecase_validation --> quality
+  persistence_adapter --> quality
+  controller_endpoints --> quality
+  usecase_tests --> quality
+  quality --> reviewer
+  hardened_quality --> synthesis
+  reviewer --> persistence_hardening
+  reviewer --> response_hardening
+  persistence_hardening --> hardened_quality
+  response_hardening --> hardened_quality
