@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @RequiredArgsConstructor
 @Repository
 public class UserDataGatewayImpl implements UserGateway {
@@ -28,6 +30,26 @@ public class UserDataGatewayImpl implements UserGateway {
                 .orElse(null);
     }
 
+    @Override
+    public User searchUserMail(String mail) {
+        List<UserData> users = userDataJpaRepository.findAllByMail(mail);
+        if (users.size() != 1) {
+            return null;
+        }
+
+        return userMapper.toUser(users.get(0));
+    }
+
+    @Override
+    public boolean emailExists(String mail) {
+        return userDataJpaRepository.existsByMail(mail);
+    }
+
+    @Override
+    public boolean emailExistsForAnotherUser(String mail, String idUser) {
+        return userDataJpaRepository.existsByMailAndIdUserNot(mail, idUser);
+    }
+
     @Transactional
     @Override
     public User updateUser(User user) {
@@ -42,7 +64,7 @@ public class UserDataGatewayImpl implements UserGateway {
                 userMapping.getPhoneNumber()
         );
 
-        return updatedRows > 0 ? user : null;
+        return updatedRows > 0 ? searchUserId(user.getIdUser()) : null;
     }
 
     @Transactional

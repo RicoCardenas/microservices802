@@ -19,5 +19,11 @@ public class User {
     private String rol;
     private Integer age;
     private String phoneNumber;
+    // Valores monetarios internos en centavos.
+    private long saldo;
+
+    public User(String idUser, String name, String mail, String password, String rol, Integer age, String phoneNumber) {
+        this(idUser, name, mail, password, rol, age, phoneNumber, 0);
+    }
 
 }

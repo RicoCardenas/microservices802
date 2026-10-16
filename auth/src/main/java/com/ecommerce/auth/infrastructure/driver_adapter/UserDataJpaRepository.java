@@ -5,7 +5,15 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
+
 public interface UserDataJpaRepository extends JpaRepository<UserData, String> {
+
+    List<UserData> findAllByMail(String mail);
+
+    boolean existsByMail(String mail);
+
+    boolean existsByMailAndIdUserNot(String mail, String idUser);
 
     @Modifying
     @Query("""

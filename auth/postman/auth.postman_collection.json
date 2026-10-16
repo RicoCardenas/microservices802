@@ -1,0 +1,584 @@
+{
+  "info": {
+    "name": "Auth - Usuario y reglas de negocio",
+    "description": "Ejecutar en orden con el microservicio y PostgreSQL activos. El primer registro genera un correo de prueba; la respuesta guarda userId. Las últimas solicitudes eliminan únicamente ese usuario. Los rechazos de negocio usan HTTP 200 y success=false. Los errores de entrada usan 400. No se fuerza un error 500 en la base de datos.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "noauth"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api/ecommerce/user",
+      "type": "string"
+    },
+    {
+      "key": "testMail",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "password",
+      "value": "Clave123!",
+      "type": "string"
+    },
+    {
+      "key": "updatedPassword",
+      "value": "Nueva123!",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - Registrar adulto",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set(\"testMail\", \"u\" + Date.now() + \"@a.co\");",
+              "pm.collectionVariables.set(\"userId\", \"\");"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "const result = pm.response.json();",
+              "pm.test(\"Resultado de la operación\", function () { pm.expect(result.success).to.eql(true); });",
+              "pm.test(\"Mensaje\", function () { pm.expect(result.message).to.eql(\"Usuario registrado correctamente\"); });",
+              "pm.test(\"La respuesta no expone la contraseña\", function () { if (result.user) { pm.expect(result.user).not.to.have.property(\"password\"); } });",
+              "if (result.success && result.user) { pm.collectionVariables.set(\"userId\", result.user.idUser); }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/save",
+        "description": "Usuario registrado correctamente",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Usuario Postman\",\n  \"mail\": \"{{testMail}}\",\n  \"password\": \"{{password}}\",\n  \"rol\": \"USER\",\n  \"age\": 18,\n  \"phoneNumber\": \"3001234567\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "02 - Login correcto",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "const result = pm.response.json();",
+              "pm.test(\"Resultado de la operación\", function () { pm.expect(result.success).to.eql(true); });",
+              "pm.test(\"Mensaje\", function () { pm.expect(result.message).to.eql(\"Inicio de sesión correcto\"); });",
+              "pm.test(\"La respuesta no expone la contraseña\", function () { if (result.user) { pm.expect(result.user).not.to.have.property(\"password\"); } });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/login",
+        "description": "Inicio de sesión correcto",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"mail\": \"{{testMail}}\",\n  \"password\": \"{{password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "03 - Contraseña incorrecta",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "const result = pm.response.json();",
+              "pm.test(\"Resultado de la operación\", function () { pm.expect(result.success).to.eql(false); });",
+              "pm.test(\"Mensaje\", function () { pm.expect(result.message).to.eql(\"Usuario o contraseña incorrectos\"); });",
+              "pm.test(\"La respuesta no expone la contraseña\", function () { if (result.user) { pm.expect(result.user).not.to.have.property(\"password\"); } });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/login",
+        "description": "Usuario o contraseña incorrectos",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"mail\": \"{{testMail}}\",\n  \"password\": \"Incorrecta!\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "04 - Correo duplicado",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "const result = pm.response.json();",
+              "pm.test(\"Resultado de la operación\", function () { pm.expect(result.success).to.eql(false); });",
+              "pm.test(\"Mensaje\", function () { pm.expect(result.message).to.eql(\"Ya existe un usuario registrado con ese correo\"); });",
+              "pm.test(\"La respuesta no expone la contraseña\", function () { if (result.user) { pm.expect(result.user).not.to.have.property(\"password\"); } });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/save",
+        "description": "Ya existe un usuario registrado con ese correo",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Usuario Postman\",\n  \"mail\": \"{{testMail}}\",\n  \"password\": \"{{password}}\",\n  \"rol\": \"USER\",\n  \"age\": 18,\n  \"phoneNumber\": \"3001234567\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "05 - Registro de menor",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "const result = pm.response.json();",
+              "pm.test(\"Resultado de la operación\", function () { pm.expect(result.success).to.eql(false); });",
+              "pm.test(\"Mensaje\", function () { pm.expect(result.message).to.eql(\"El usuario debe ser mayor de edad\"); });",
+              "pm.test(\"La respuesta no expone la contraseña\", function () { if (result.user) { pm.expect(result.user).not.to.have.property(\"password\"); } });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/save",
+        "description": "El usuario debe ser mayor de edad",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Usuario Postman\",\n  \"mail\": \"menor@a.co\",\n  \"password\": \"{{password}}\",\n  \"rol\": \"USER\",\n  \"age\": 17,\n  \"phoneNumber\": \"3001234567\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "06 - Login sin contraseña",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", function () { pm.response.to.have.status(400); });",
+              "const result = pm.response.json();",
+              "pm.test(\"Resultado de la operación\", function () { pm.expect(result.success).to.eql(false); });",
+              "pm.test(\"Mensaje\", function () { pm.expect(result.message).to.eql(\"El correo y la contraseña son obligatorios\"); });",
+              "pm.test(\"La respuesta no expone la contraseña\", function () { if (result.user) { pm.expect(result.user).not.to.have.property(\"password\"); } });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/login",
+        "description": "El correo y la contraseña son obligatorios",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"mail\": \"{{testMail}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "07 - Edad con tipo inválido",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", function () { pm.response.to.have.status(400); });",
+              "const result = pm.response.json();",
+              "pm.test(\"Resultado de la operación\", function () { pm.expect(result.success).to.eql(false); });",
+              "pm.test(\"Mensaje\", function () { pm.expect(result.message).to.eql(\"El cuerpo de la solicitud es obligatorio y debe contener un JSON válido\"); });",
+              "pm.test(\"La respuesta no expone la contraseña\", function () { if (result.user) { pm.expect(result.user).not.to.have.property(\"password\"); } });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/save",
+        "description": "El cuerpo de la solicitud es obligatorio y debe contener un JSON válido",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Usuario Postman\",\n  \"mail\": \"{{testMail}}\",\n  \"password\": \"{{password}}\",\n  \"rol\": \"USER\",\n  \"age\": \"dieciocho\",\n  \"phoneNumber\": \"3001234567\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "08 - Consultar usuario",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "const result = pm.response.json();",
+              "pm.test(\"Resultado de la operación\", function () { pm.expect(result.success).to.eql(true); });",
+              "pm.test(\"Mensaje\", function () { pm.expect(result.message).to.eql(\"Usuario encontrado\"); });",
+              "pm.test(\"La respuesta no expone la contraseña\", function () { if (result.user) { pm.expect(result.user).not.to.have.property(\"password\"); } });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/search/{{userId}}",
+        "description": "Usuario encontrado"
+      }
+    },
+    {
+      "name": "09 - Actualización rechazada por edad",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "const result = pm.response.json();",
+              "pm.test(\"Resultado de la operación\", function () { pm.expect(result.success).to.eql(false); });",
+              "pm.test(\"Mensaje\", function () { pm.expect(result.message).to.eql(\"El usuario debe ser mayor de edad\"); });",
+              "pm.test(\"La respuesta no expone la contraseña\", function () { if (result.user) { pm.expect(result.user).not.to.have.property(\"password\"); } });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/update",
+        "description": "El usuario debe ser mayor de edad",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"idUser\": \"{{userId}}\",\n  \"name\": \"Usuario actualizado\",\n  \"mail\": \"{{testMail}}\",\n  \"password\": \"{{updatedPassword}}\",\n  \"rol\": \"USER\",\n  \"age\": 17,\n  \"phoneNumber\": \"3001234567\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "10 - Actualizar usuario y contraseña",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "const result = pm.response.json();",
+              "pm.test(\"Resultado de la operación\", function () { pm.expect(result.success).to.eql(true); });",
+              "pm.test(\"Mensaje\", function () { pm.expect(result.message).to.eql(\"Usuario actualizado correctamente\"); });",
+              "pm.test(\"La respuesta no expone la contraseña\", function () { if (result.user) { pm.expect(result.user).not.to.have.property(\"password\"); } });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/update",
+        "description": "Usuario actualizado correctamente",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"idUser\": \"{{userId}}\",\n  \"name\": \"Usuario actualizado\",\n  \"mail\": \"{{testMail}}\",\n  \"password\": \"{{updatedPassword}}\",\n  \"rol\": \"USER\",\n  \"age\": 25,\n  \"phoneNumber\": \"3001234567\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "11 - Login con contraseña anterior",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "const result = pm.response.json();",
+              "pm.test(\"Resultado de la operación\", function () { pm.expect(result.success).to.eql(false); });",
+              "pm.test(\"Mensaje\", function () { pm.expect(result.message).to.eql(\"Usuario o contraseña incorrectos\"); });",
+              "pm.test(\"La respuesta no expone la contraseña\", function () { if (result.user) { pm.expect(result.user).not.to.have.property(\"password\"); } });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/login",
+        "description": "Usuario o contraseña incorrectos",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"mail\": \"{{testMail}}\",\n  \"password\": \"{{password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "12 - Login con contraseña actualizada",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "const result = pm.response.json();",
+              "pm.test(\"Resultado de la operación\", function () { pm.expect(result.success).to.eql(true); });",
+              "pm.test(\"Mensaje\", function () { pm.expect(result.message).to.eql(\"Inicio de sesión correcto\"); });",
+              "pm.test(\"La respuesta no expone la contraseña\", function () { if (result.user) { pm.expect(result.user).not.to.have.property(\"password\"); } });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/login",
+        "description": "Inicio de sesión correcto",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"mail\": \"{{testMail}}\",\n  \"password\": \"{{updatedPassword}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "13 - Método incorrecto para login",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 405\", function () { pm.response.to.have.status(405); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/login",
+        "description": "13 - Método incorrecto para login"
+      }
+    },
+    {
+      "name": "14 - Eliminar usuario de prueba",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "const result = pm.response.json();",
+              "pm.test(\"Resultado de la operación\", function () { pm.expect(result.success).to.eql(true); });",
+              "pm.test(\"Mensaje\", function () { pm.expect(result.message).to.eql(\"Usuario eliminado correctamente\"); });",
+              "pm.test(\"La respuesta no expone la contraseña\", function () { if (result.user) { pm.expect(result.user).not.to.have.property(\"password\"); } });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/delete/{{userId}}",
+        "description": "Usuario eliminado correctamente"
+      }
+    },
+    {
+      "name": "15 - Consultar usuario eliminado",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "const result = pm.response.json();",
+              "pm.test(\"Resultado de la operación\", function () { pm.expect(result.success).to.eql(false); });",
+              "pm.test(\"Mensaje\", function () { pm.expect(result.message).to.eql(\"Usuario no encontrado\"); });",
+              "pm.test(\"La respuesta no expone la contraseña\", function () { if (result.user) { pm.expect(result.user).not.to.have.property(\"password\"); } });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/search/{{userId}}",
+        "description": "Usuario no encontrado"
+      }
+    },
+    {
+      "name": "16 - Eliminar usuario inexistente",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "const result = pm.response.json();",
+              "pm.test(\"Resultado de la operación\", function () { pm.expect(result.success).to.eql(false); });",
+              "pm.test(\"Mensaje\", function () { pm.expect(result.message).to.eql(\"Usuario no encontrado\"); });",
+              "pm.test(\"La respuesta no expone la contraseña\", function () { if (result.user) { pm.expect(result.user).not.to.have.property(\"password\"); } });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/delete/{{userId}}",
+        "description": "Usuario no encontrado"
+      }
+    }
+  ]
+}
